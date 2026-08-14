@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smartmag — Panel Pengurus</title>
+<title>Pantau Maggot Kita — Panel Pengurus</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -35,11 +35,12 @@
           <circle cx="9" cy="21" r="2.6" fill="var(--moss)"/>
         </g>
       </svg>
-      <span class="brand-name">Smartmag</span>
+      <span class="brand-name">Pantau Maggot Kita</span>
     </a>
     <div class="tabs">
       <button class="tab-btn active" data-tab="panel-isi">Isi data</button>
       <button class="tab-btn" data-tab="panel-pantau">Pantau</button>
+      <button class="tab-btn" data-tab="panel-panduan">Panduan</button>
     </div>
   </div>
 </header>
@@ -120,9 +121,20 @@
 <div id="panel-pantau" class="tab-panel">
   <section style="padding-top: 40px;">
     <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Data hari ini</p>
-        <h2>Ringkasan aktivitas</h2>
+      <div class="section-head kpi-head-row">
+        <div>
+          <p class="eyebrow">Data hari ini</p>
+          <h2>Ringkasan aktivitas</h2>
+        </div>
+        <div class="kpi-periode-wrap">
+          <label for="kpi-periode" class="kpi-periode-label">Rentang</label>
+          <select id="kpi-periode" class="kpi-periode-select">
+            <option value="total" selected>Total</option>
+            <option value="7h">7 hari terakhir</option>
+            <option value="1b">Bulan ini</option>
+            <option value="3b">3 bulan terakhir</option>
+          </select>
+        </div>
       </div>
       <div class="kpi-grid">
         <div class="kpi-card">
@@ -183,12 +195,57 @@
   </section>
 </div>
 
+<div id="panel-panduan" class="tab-panel">
+  <section style="padding-top: 40px;">
+    <div class="wrap" style="max-width: 760px;">
+      <div class="section-head">
+        <p class="eyebrow">Panduan &amp; penanganan masalah</p>
+        <h2>Ada masalah di kandang?</h2>
+        <p class="lede">Pilih masalah yang kamu temukan, lalu tekan Lihat Detail untuk baca penjelasan lengkapnya &mdash; apa yang terjadi, penyebabnya, sampai langkah penanganannya.</p>
+      </div>
+      <div id="panduan-list" class="panduan-list"></div>
+    </div>
+  </section>
+</div>
+
 <footer class="site-footer">
-  <div class="wrap">
-    <p>Smartmag &middot; Panel pengurus</p>
-    <p>Halaman publik untuk QR ada di <code>index.html</code> (halaman utama)</p>
+  <div class="wrap footer-grid">
+    <div class="footer-block">
+      <p class="footer-title">Pantau Maggot Kita</p>
+      <p class="footer-line">Panel pengurus &middot; Kelurahan Randuacir</p>
+    </div>
+    <div class="footer-block">
+      <p class="footer-label">Halaman publik</p>
+      <p class="footer-line">QR kandang mengarah ke <code>index.html</code></p>
+    </div>
+    <div class="footer-block">
+      <p class="footer-label">Program</p>
+      <p class="footer-line">KKN UNDIP 2026</p>
+    </div>
   </div>
 </footer>
+
+<div class="modal-overlay" id="panduan-modal" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="panduan-modal-title">
+    <button type="button" class="modal-close" aria-label="Tutup">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2 L14 14 M14 2 L2 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <p class="modal-section-label panduan-modal-tag"></p>
+    <h3 class="modal-stage-title" id="panduan-modal-title"></h3>
+    <p class="modal-section-label">Apa yang terjadi</p>
+    <p class="panduan-modal-p" id="panduan-apa"></p>
+    <p class="modal-section-label">Kemungkinan penyebab</p>
+    <ul class="modal-ciri" id="panduan-penyebab"></ul>
+    <p class="modal-section-label">Langkah penanganan</p>
+    <ul class="modal-ciri" id="panduan-langkah"></ul>
+    <p class="modal-section-label">Hal yang harus dihindari</p>
+    <ul class="modal-ciri" id="panduan-hindari"></ul>
+    <p class="modal-section-label">Kapan dipantau kembali</p>
+    <p class="panduan-modal-p" id="panduan-pantau"></p>
+    <p class="modal-section-label">Sumber informasi ilmiah</p>
+    <p class="panduan-modal-p panduan-sumber" id="panduan-sumber"></p>
+  </div>
+</div>
 
 <script src="js/config.js"></script>
 <script src="js/dashboard.js"></script>
