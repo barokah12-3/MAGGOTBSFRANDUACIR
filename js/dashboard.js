@@ -1,5 +1,5 @@
 /* ==========================================================
-   SMARTMAG — dashboard.js
+   SMARTMAG | dashboard.js
    Logika sisi "Pantau": ambil data, hitung status, render ke HTML.
    Dipakai bareng oleh index.html (tab Pantau) dan pantau.html.
    Butuh config.js dimuat SEBELUM file ini (pakai APPS_SCRIPT_URL).
@@ -21,7 +21,7 @@ const DATA_CONTOH = {
     fase: "Lalat dewasa & bertelur",
     hari: 6,
     siklus: 10,
-    jumlahLalat: 240,
+    kepadatan: "Banyak",
     telurTerakhir: "3 hari lalu",
     updated: "3 jam lalu"
   },
@@ -113,7 +113,7 @@ const STAGE_DETAILS = {
       "Betina kawin lalu bertelur di celah dekat sumber bau fermentasi"
     ],
     rawat: [
-      "Sediakan kandang jaring dengan cahaya cukup — lalat butuh cahaya untuk kawin",
+      "Sediakan kandang jaring dengan cahaya cukup karena lalat butuh cahaya untuk kawin",
       "Taruh media bertelur seperti kardus bergelombang dekat umpan berbau",
       "Sediakan air minum di dalam jaring",
       "Kumpulkan telur setiap beberapa hari untuk memulai siklus box berikutnya"
@@ -129,7 +129,7 @@ const STAGE_DETAILS = {
    referensi, belum ada field form-nya.
    Sumber: rangkuman praktik teknis budidaya larva BSF (Hermetia illucens)
    dari berbagai panduan pengelolaan sampah organik berbasis maggot dan
-   referensi umum budidaya BSF — cek berkas revisi untuk daftar sumber
+   referensi umum budidaya BSF. Cek berkas revisi untuk daftar sumber
    ilmiah resmi yang perlu ditambahkan sebelum publikasi final. */
 const PANDUAN_DATA = {
   "Terlalu basah": {
@@ -142,7 +142,7 @@ const PANDUAN_DATA = {
       "Pemberian pakan berlebihan sehingga menumpuk sebelum sempat diurai"
     ],
     langkah: [
-      "Tambahkan bahan kering penyerap sedikit demi sedikit — karton bergelombang sobek, sekam, atau serbuk gergaji — sambil diaduk ringan",
+      "Tambahkan bahan kering penyerap sedikit demi sedikit (karton bergelombang sobek, sekam, atau serbuk gergaji) sambil diaduk ringan",
       "Pastikan lubang drainase tidak tersumbat supaya cairan lindi bisa keluar",
       "Kurangi jumlah pakan basah untuk sementara sampai media kembali normal"
     ],
@@ -151,7 +151,7 @@ const PANDUAN_DATA = {
       "Jangan menutup box rapat tanpa ventilasi, ini memperparah kondisi kekurangan oksigen",
       "Jangan mengaduk seluruh media sekaligus, larva bisa terluka"
     ],
-    pantau: "Cek lagi dalam 1x24 jam. Tekstur target seperti spons yang sudah diperas — lembab tapi tidak menetes."
+    pantau: "Cek lagi dalam 1x24 jam. Tekstur target seperti spons yang sudah diperas: lembab tapi tidak menetes."
   },
   "Terlalu kering": {
     judul: "Media terlalu kering",
@@ -198,7 +198,7 @@ const PANDUAN_DATA = {
   "Muncul hama": {
     judul: "Muncul hama atau lalat rumah",
     tag: "Referensi",
-    apa: "Ada semut, kecoa, atau lalat rumah biasa yang mengerumuni box — bukan lalat BSF dewasa yang memang menghuni kandang jaring.",
+    apa: "Ada semut, kecoa, atau lalat rumah biasa yang mengerumuni box, bukan lalat BSF dewasa yang memang menghuni kandang jaring.",
     penyebab: [
       "Sisa pakan tercecer di luar box mengundang hama lain",
       "Celah pada box tidak tertutup rapat",
@@ -210,7 +210,7 @@ const PANDUAN_DATA = {
       "Gunakan penghalang air (water moat) di kaki box untuk mencegah semut naik"
     ],
     hindari: [
-      "Jangan pakai insektisida di dalam atau di sekitar box — larva BSF juga ikut mati",
+      "Jangan pakai insektisida di dalam atau di sekitar box karena larva BSF juga ikut mati",
       "Jangan taruh sampah non-organik di dekat box"
     ],
     pantau: "Cek harian, terutama pagi dan sore saat hama biasanya paling aktif."
@@ -227,7 +227,7 @@ const PANDUAN_DATA = {
     langkah: [
       "Pastikan telur dari kandang jaring rutin dipanen dan ditanam ke box baru",
       "Jaga box tetap di tempat teduh dan hangat",
-      "Variasikan jenis sampah organik — sayur, buah, ampas kopi — jangan satu jenis terus-menerus"
+      "Variasikan jenis sampah organik (sayur, buah, ampas kopi), jangan satu jenis terus-menerus"
     ],
     hindari: [
       "Jangan terlalu sering memindahkan larva muda, mereka rentan stres",
@@ -283,13 +283,41 @@ function faseIconSVG(kelas) {
   return icons[kelas] || icons.larva;
 }
 
+/* ---------- Animasi angka naik dari 0 ke nilai asli (dipakai kartu KPI) ----------
+   Format angka desimal (misal siklus rata-rata "18.5") ikut dibulatkan tiap frame
+   sesuai jumlah desimal aslinya, biar tidak "kedip" angka koma pas animasi jalan.
+   Kalau device orang aktifkan prefers-reduced-motion, angka langsung tampil final. */
+function animateCountUp(el, target, duration = 850) {
+  if (!el) return;
+  const num = Number(target);
+  if (Number.isNaN(num)) { el.textContent = target; return; }
+
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduceMotion) { el.textContent = target; return; }
+
+  const decimals = (String(target).split(".")[1] || "").length;
+  const start = performance.now();
+  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+
+  function frame(now) {
+    const progress = Math.min(1, (now - start) / duration);
+    const eased = easeOutQuart(progress);
+    const current = num * eased;
+    el.textContent = decimals ? current.toFixed(decimals) : Math.round(current);
+    if (progress < 1) requestAnimationFrame(frame);
+    else el.textContent = target;
+  }
+  requestAnimationFrame(frame);
+}
+
 /* ---------- Render kartu KPI + delta + detail ---------- */
 function renderKPI(kpi, boxes, trend7h) {
   const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  setVal("kpi-sampah", kpi.sampahDiolah);
-  setVal("kpi-panen", kpi.totalPanen);
-  setVal("kpi-box", kpi.boxBerjalan);
-  setVal("kpi-siklus", kpi.siklusRata);
+  const setValAnimated = (id, val) => { const el = document.getElementById(id); if (el) animateCountUp(el, val); };
+  setValAnimated("kpi-sampah", kpi.sampahDiolah);
+  setValAnimated("kpi-panen", kpi.totalPanen);
+  setValAnimated("kpi-box", kpi.boxBerjalan);
+  setValAnimated("kpi-siklus", kpi.siklusRata);
 
   /* Delta sampah hari ini vs kemarin, dihitung dari 2 titik terakhir tren 7 hari */
   const deltaEl = document.getElementById("kpi-sampah-delta");
@@ -340,7 +368,7 @@ function renderKPI(kpi, boxes, trend7h) {
   }
 }
 
-/* ---------- Dropdown "Rentang" — ambil ulang sampah diolah & total panen per periode ---------- */
+/* ---------- Dropdown "Rentang": ambil ulang sampah diolah & total panen per periode ---------- */
 async function ambilKPIPeriode(periode) {
   try {
     const res = await fetch(APPS_SCRIPT_URL + "?aksi=kpi&periode=" + periode);
@@ -360,8 +388,8 @@ async function terapkanPeriodeKPI(periode) {
   const data = await ambilKPIPeriode(periode);
   if (!data) return;
 
-  sampahEl.textContent = data.sampahDiolah;
-  panenEl.textContent = data.totalPanen;
+  animateCountUp(sampahEl, data.sampahDiolah);
+  animateCountUp(panenEl, data.totalPanen);
 
   const detailPanen = document.getElementById("kpi-detail-panen");
   if (detailPanen && DATA_CACHE) {
@@ -445,20 +473,31 @@ function renderJaring(jaring) {
     <div class="jaring-info">
       <h3>Kandang jaring</h3>
       <p>${jaring.fase} &middot; hari ke-${jaring.hari} dari ${jaring.siklus} &middot; diperbarui ${jaring.updated}</p>
-      <p>Larva yang tidak dipanen tumbuh jadi lalat dewasa di sini, lalu bertelur lagi buat mulai box baru — siklus jalan sendiri, bukan cuma tanam-panen-abis.</p>
+      <p>Larva yang tidak dipanen dibiarkan tumbuh di sini sampai jadi lalat dewasa, lalu bertelur lagi untuk memulai box baru. Jadi siklusnya berjalan sendiri, bukan cuma sekali tanam lalu habis dipanen.</p>
     </div>
     <div class="jaring-stats">
-      <div class="jaring-stat"><span class="val">${jaring.jumlahLalat}</span><span class="lbl">ekor lalat</span></div>
+      <div class="jaring-stat jaring-stat-kepadatan">
+        <span class="jaring-kepadatan-badge ${kepadatanKelas(jaring.kepadatan)}">${jaring.kepadatan}</span>
+        <span class="lbl">kepadatan lalat</span>
+      </div>
       <div class="jaring-stat"><span class="val">${jaring.telurTerakhir}</span><span class="lbl">telur terakhir</span></div>
     </div>`;
+}
+
+/* ---------- Kelas warna badge kepadatan lalat ---------- */
+function kepadatanKelas(kepadatan) {
+  const map = { "Sedikit": "sedikit", "Sedang": "sedang", "Banyak": "banyak" };
+  return map[kepadatan] || "sedang";
 }
 
 /* ---------- Render grafik tren (batang CSS sederhana), sesuai rentang aktif ---------- */
 function renderTrendChart(rangeKey) {
   const chart = document.getElementById("trend-chart");
-  if (!chart || !DATA_CACHE) return;
+  const labelsRow = document.getElementById("trend-labels");
+  if (!chart || !labelsRow || !DATA_CACHE) return;
   const trend = (DATA_CACHE.trend && DATA_CACHE.trend[rangeKey]) || [];
   chart.innerHTML = "";
+  labelsRow.innerHTML = "";
   if (!trend.length) return;
 
   const maxKg = Math.max(...trend.map(d => d.kg));
@@ -466,12 +505,16 @@ function renderTrendChart(rangeKey) {
   trend.forEach((d, i) => {
     const col = document.createElement("div");
     col.className = "trend-col";
-    const tinggiPx = maxKg > 0 ? Math.round((d.kg / maxKg) * 120) : 0;
+    const tinggiPx = maxKg > 0 ? Math.round((d.kg / maxKg) * 118) : 0;
     col.innerHTML = `
       <span class="trend-label-val">${d.kg}</span>
-      <div class="trend-bar ${i === terakhir ? "today" : ""}" data-target="${tinggiPx}"></div>
-      <span class="trend-label-day">${d.label}</span>`;
+      <div class="trend-bar ${i === terakhir ? "today" : ""}" data-target="${tinggiPx}"></div>`;
     chart.appendChild(col);
+
+    const dayLabel = document.createElement("span");
+    dayLabel.className = "trend-label-day";
+    dayLabel.textContent = d.label;
+    labelsRow.appendChild(dayLabel);
   });
   requestAnimationFrame(() => {
     chart.querySelectorAll(".trend-bar").forEach(el => {
@@ -616,6 +659,139 @@ function initPanduanModal() {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") tutupModalPanduan(); });
 }
 
+/* ---------- Cek sampahmu cocok atau enggak ----------
+   Matching berbasis kata utuh (whole-word) ke daftar SAMPAH_DATA (di config.js),
+   supaya kata pendek kayak "nasi" atau "kucing" enggak nyangkut ke frasa lain
+   yang enggak nyambung cuma karena kebetulan jadi substring.
+   Kalau satu kata kunci ternyata nyangkut ke beberapa item dengan status beda
+   (cocok vs tidak cocok), dianggap ambigu dan diminta ketik lebih spesifik,
+   bukan asal ambil match pertama. Kalau enggak ketemu sama sekali, kasih
+   fallback yang ngajak nanya ke pengurus lewat WA (link footer). */
+function escapeRegExpSampah(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function kataUtuhCocok(teks, kata) {
+  if (!teks || !kata) return false;
+  const re = new RegExp(`(^|\\s)${escapeRegExpSampah(kata)}($|\\s)`);
+  return re.test(teks);
+}
+
+function isKataMatch(keyword, query) {
+  return kataUtuhCocok(keyword, query) || kataUtuhCocok(query, keyword);
+}
+
+function cariSampah(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return { status: "empty" };
+  if (typeof SAMPAH_DATA === "undefined") return { status: "error" };
+
+  const matches = SAMPAH_DATA.filter(item =>
+    item.kata.some(k => isKataMatch(k.toLowerCase(), q))
+  );
+
+  if (matches.length === 0) return { status: "not-found" };
+
+  const adaCocok = matches.some(m => m.cocok);
+  const adaTidakCocok = matches.some(m => !m.cocok);
+  if (adaCocok && adaTidakCocok) {
+    return { status: "ambiguous", matches };
+  }
+
+  return { status: "found", item: matches[0] };
+}
+
+function renderHasilCekSampah(query) {
+  const box = document.getElementById("cek-sampah-result");
+  if (!box) return;
+  const q = query.trim();
+  if (!q) { box.innerHTML = ""; return; }
+
+  const hasil = cariSampah(q);
+  const qAman = q.replace(/</g, "&lt;");
+
+  if (hasil.status === "empty") {
+    box.innerHTML = "";
+    return;
+  }
+
+  if (hasil.status === "error") {
+    box.innerHTML = `
+      <div class="cek-sampah-card notfound">
+        <div>
+          <p class="cek-sampah-text">Data pengecekan belum termuat, coba refresh halaman ya.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  if (hasil.status === "not-found") {
+    box.innerHTML = `
+      <div class="cek-sampah-card notfound">
+        <div>
+          <p class="cek-sampah-text">Belum ada di data kami untuk &ldquo;${qAman}&rdquo;.</p>
+          <p class="cek-sampah-saran">Coba tanya langsung ke pengurus kandang, biar enggak salah tebak.</p>
+          <a class="cek-sampah-wa" href="https://wa.me/6281234567890" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.44-1.34a9.9 9.9 0 0 0 4.6 1.13h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm5.8 14.02c-.24.68-1.4 1.3-1.93 1.38-.5.08-1.12.11-1.8-.11-.42-.13-.95-.31-1.64-.6-2.88-1.24-4.76-4.14-4.9-4.33-.14-.19-1.17-1.56-1.17-2.98s.73-2.11 1-2.4c.26-.29.56-.36.75-.36.19 0 .38 0 .54.01.17.01.4-.07.63.48.24.57.81 1.98.88 2.12.07.15.11.32.02.51-.1.19-.15.31-.29.48-.15.17-.31.37-.44.5-.15.15-.3.31-.13.6.17.29.75 1.25 1.62 2.02 1.11.99 2.05 1.3 2.34 1.45.29.15.46.13.63-.05.17-.18.72-.83.91-1.12.19-.29.38-.24.63-.14.26.09 1.63.77 1.91.91.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg>
+            Tanya pengurus lewat WA
+          </a>
+        </div>
+      </div>`;
+    return;
+  }
+
+  if (hasil.status === "ambiguous") {
+    const contohBeda = hasil.matches.find(m => m.cocok !== hasil.matches[0].cocok);
+    const contoh1 = hasil.matches[0].kata[0];
+    const contoh2 = contohBeda ? contohBeda.kata[0] : null;
+    box.innerHTML = `
+      <div class="cek-sampah-card ambiguous">
+        <span class="cek-sampah-badge">Perlu diperjelas</span>
+        <div>
+          <p class="cek-sampah-text">Kata &ldquo;${qAman}&rdquo; bisa mengarah ke beberapa jenis sampah dengan status berbeda (ada yang cocok, ada yang enggak).</p>
+          <p class="cek-sampah-saran">${contoh2 ? `Coba ketik lebih spesifik, misalnya &ldquo;${contoh1}&rdquo; atau &ldquo;${contoh2}&rdquo;.` : "Coba ketik lebih spesifik ya."}</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const item = hasil.item;
+  box.innerHTML = `
+    <div class="cek-sampah-card ${item.cocok ? "yes" : "no"}">
+      <span class="cek-sampah-badge">${item.cocok ? "Cocok" : "Tidak cocok"}</span>
+      <div>
+        <p class="cek-sampah-text">${item.alasan}</p>
+        ${item.saran ? `<p class="cek-sampah-saran">${item.saran}</p>` : ""}
+      </div>
+    </div>`;
+}
+
+function initCekSampah() {
+  const input = document.getElementById("cek-sampah-input");
+  if (!input) return;
+  input.addEventListener("input", () => renderHasilCekSampah(input.value));
+}
+
+/* ---------- FAQ accordion ---------- */
+function initFaqAccordion() {
+  const items = document.querySelectorAll(".faq-item");
+  if (!items.length) return;
+  items.forEach(item => {
+    const btn = item.querySelector(".faq-question");
+    btn.addEventListener("click", () => {
+      const wasOpen = item.classList.contains("open");
+      items.forEach(other => {
+        other.classList.remove("open");
+        other.querySelector(".faq-question").setAttribute("aria-expanded", "false");
+      });
+      if (!wasOpen) {
+        item.classList.add("open");
+        btn.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+}
+
 /* ---------- Animasi scroll reveal (Intersection Observer) ---------- */
 function aktifkanScrollReveal() {
   const target = document.querySelectorAll(".reveal");
@@ -632,6 +808,104 @@ function aktifkanScrollReveal() {
     });
   }, { threshold: 0.15 });
   target.forEach(el => observer.observe(el));
+}
+
+/* ---------- Tab utama halaman publik: "Status box" & "Kenalan sama maggot" ---------- */
+/* Kontrolnya dobel sama tombol CTA di hero (data-tab-link) — tidak ada nav tab terpisah. */
+function initMainTabs() {
+  const ctaLinks = Array.from(document.querySelectorAll("[data-tab-link]"));
+  const panels = Array.from(document.querySelectorAll(".tabpanel[data-tabname]"));
+  if (!ctaLinks.length || !panels.length) return; // halaman ini tidak punya tab utama (mis. admin.html)
+
+  const URUTAN_TAB = ["status", "tentang"]; // kiri ke kanan, sesuai urutan tombol di hero
+  let tabAktifSaatIni = URUTAN_TAB.find(nama => {
+    const p = panels.find(pn => pn.dataset.tabname === nama);
+    return p && !p.hasAttribute("hidden");
+  }) || URUTAN_TAB[0];
+
+  function panelUntuk(nama) {
+    return panels.find(p => p.dataset.tabname === nama) || null;
+  }
+
+  function tampilkanRevealDalamPanel(panel) {
+    panel.querySelectorAll(".reveal").forEach(el => el.classList.add("is-visible"));
+  }
+
+  /* Ganti tab. Tidak menggeser posisi scroll halaman sama sekali oleh dirinya sendiri —
+     kontennya cuma "geser" masuk (kiri/kanan, sesuai posisi tombolnya) di tempat yang sama.
+     Kalau perlu ikut scroll ke bagian tertentu (mis. link silang di FAQ), itu urusan
+     pemanggilnya lewat parameter scrollTarget. */
+  function pindahTab(nama, scrollTarget) {
+    const panelTarget = panelUntuk(nama);
+    if (!panelTarget) return;
+
+    const geserKananan = URUTAN_TAB.indexOf(nama) > URUTAN_TAB.indexOf(tabAktifSaatIni);
+    tabAktifSaatIni = nama;
+
+    ctaLinks.forEach(link => {
+      const aktif = link.dataset.tabLink === nama;
+      link.classList.toggle("btn-primary", aktif);
+      link.classList.toggle("btn-ghost", !aktif);
+      link.setAttribute("aria-selected", aktif ? "true" : "false");
+    });
+
+    panels.forEach(panel => {
+      const aktif = panel === panelTarget;
+      panel.classList.remove("slide-left", "slide-right");
+      if (aktif) {
+        panel.removeAttribute("hidden");
+        panel.classList.add(geserKananan ? "slide-right" : "slide-left");
+        tampilkanRevealDalamPanel(panel);
+      } else {
+        panel.setAttribute("hidden", "");
+      }
+    });
+
+    if (scrollTarget) {
+      requestAnimationFrame(() => {
+        setTimeout(() => scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+      });
+    }
+  }
+
+  /* Tombol CTA di hero: cuma ganti tab di tempat, halaman tidak ikut discroll ke mana-mana
+     (tombolnya kiri-kanan, jadi kesannya geser, bukan lompat scroll). */
+  ctaLinks.forEach(link => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      pindahTab(link.dataset.tabLink);
+    });
+  });
+
+  /* Link silang di dalam konten (mis. "cek statusnya di atas" di FAQ) yang menuju id di
+     tab lain: pindah tab dulu, baru scroll ke bagian yang dimaksud. */
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest('a[href^="#"]');
+    if (!link || link.hasAttribute("data-tab-link")) return; // tombol hero sudah ditangani sendiri di atas
+    const id = link.getAttribute("href").slice(1);
+    if (!id) return;
+    const target = document.getElementById(id);
+    if (!target) return;
+    const panelTarget = target.closest(".tabpanel[data-tabname]");
+    if (!panelTarget) return; // target di luar sistem tab (mis. di hero), biarkan default
+
+    if (panelTarget.hasAttribute("hidden")) {
+      e.preventDefault();
+      pindahTab(panelTarget.dataset.tabname, target);
+    }
+    /* Kalau tab tujuannya sudah aktif, biarkan anchor default yang scroll ke sana. */
+  });
+
+  /* Deep link: kalau halaman dibuka langsung dengan hash (mis. dibagikan lewat chat),
+     buka tab yang sesuai dulu baru langsung lompat (tanpa animasi geser) ke posisinya. */
+  if (window.location.hash) {
+    const target = document.getElementById(window.location.hash.slice(1));
+    const panelTarget = target ? target.closest(".tabpanel[data-tabname]") : null;
+    if (panelTarget && panelTarget.dataset.tabname !== tabAktifSaatIni) {
+      pindahTab(panelTarget.dataset.tabname);
+      setTimeout(() => target.scrollIntoView({ behavior: "auto", block: "start" }), 60);
+    }
+  }
 }
 
 /* ---------- Inisialisasi semua bagian Pantau ---------- */
@@ -653,11 +927,14 @@ async function initDashboard() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initMainTabs();
   initKpiToggle();
   initKpiPeriode();
   initTrendTabs();
   initSiklusModal();
   initPanduanModal();
   renderPanduanList();
+  initCekSampah();
+  initFaqAccordion();
   initDashboard();
 });

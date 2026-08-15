@@ -1,5 +1,5 @@
 /* ==========================================================
-   SMARTMAG — form.js
+   SMARTMAG | form.js
    Logika tab "Isi Data": kirim catatan harian ke Apps Script.
    Dipakai HANYA di index.html (pengurus). Butuh config.js.
    ========================================================== */
@@ -59,7 +59,7 @@ function initFormIsiData() {
   });
 }
 
-/* ---------- Tab switching (Isi Data / Pantau) — khusus index.html ---------- */
+/* ---------- Tab switching (Isi Data / Pantau), khusus index.html ---------- */
 function initTabs() {
   const tabBtns = document.querySelectorAll(".tab-btn");
   if (!tabBtns.length) return;
