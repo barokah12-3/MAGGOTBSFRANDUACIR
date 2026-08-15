@@ -477,10 +477,10 @@ function renderJaring(jaring) {
     </div>
     <div class="jaring-stats">
       <div class="jaring-stat jaring-stat-kepadatan">
-        <span class="jaring-kepadatan-badge ${kepadatanKelas(jaring.kepadatan)}">${jaring.kepadatan}</span>
+        <span class="jaring-kepadatan-badge ${jaring.kepadatan ? kepadatanKelas(jaring.kepadatan) : "kosong"}">${jaring.kepadatan || "Belum ada data"}</span>
         <span class="lbl">kepadatan lalat</span>
       </div>
-      <div class="jaring-stat"><span class="val">${jaring.telurTerakhir}</span><span class="lbl">telur terakhir</span></div>
+      <div class="jaring-stat"><span class="val">${jaring.telurTerakhir || "&ndash;"}</span><span class="lbl">telur terakhir</span></div>
     </div>`;
 }
 
@@ -769,7 +769,28 @@ function renderHasilCekSampah(query) {
 function initCekSampah() {
   const input = document.getElementById("cek-sampah-input");
   if (!input) return;
-  input.addEventListener("input", () => renderHasilCekSampah(input.value));
+  const chipWrap = document.getElementById("cek-sampah-chips");
+
+  input.addEventListener("input", () => {
+    renderHasilCekSampah(input.value);
+    if (chipWrap) {
+      const cocokChip = Array.from(chipWrap.querySelectorAll(".cek-sampah-chip"))
+        .find(c => c.dataset.kata.toLowerCase() === input.value.trim().toLowerCase());
+      chipWrap.querySelectorAll(".cek-sampah-chip").forEach(c => c.classList.toggle("active", c === cocokChip));
+    }
+  });
+
+  if (chipWrap) {
+    chipWrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".cek-sampah-chip");
+      if (!chip) return;
+      chipWrap.querySelectorAll(".cek-sampah-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      input.value = chip.dataset.kata;
+      renderHasilCekSampah(input.value);
+      input.focus();
+    });
+  }
 }
 
 /* ---------- FAQ accordion ---------- */
@@ -790,6 +811,37 @@ function initFaqAccordion() {
       }
     });
   });
+}
+
+/* ---------- Tooltip istilah teknis ---------- */
+function initGlossaryTooltip() {
+  const terms = document.querySelectorAll(".glossary-term");
+  if (!terms.length) return;
+
+  function tutupSemua(kecuali) {
+    terms.forEach(t => {
+      if (t !== kecuali) { t.classList.remove("open"); t.setAttribute("aria-expanded", "false"); }
+    });
+  }
+
+  terms.forEach(term => {
+    term.setAttribute("role", "button");
+    term.setAttribute("tabindex", "0");
+    term.setAttribute("aria-expanded", "false");
+    term.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const sedangTerbuka = term.classList.contains("open");
+      tutupSemua(term);
+      term.classList.toggle("open", !sedangTerbuka);
+      term.setAttribute("aria-expanded", (!sedangTerbuka).toString());
+    });
+    term.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); term.click(); }
+      if (e.key === "Escape") { term.classList.remove("open"); term.setAttribute("aria-expanded", "false"); }
+    });
+  });
+
+  document.addEventListener("click", () => tutupSemua(null));
 }
 
 /* ---------- Animasi scroll reveal (Intersection Observer) ---------- */
@@ -936,5 +988,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderPanduanList();
   initCekSampah();
   initFaqAccordion();
+  initGlossaryTooltip();
   initDashboard();
 });
